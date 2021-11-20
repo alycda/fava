@@ -95,7 +95,7 @@ def main(
 
     if not debug:
         server = Server((host, port), app)
-        print(f"Running Fava on http://{host}:{port}")
+        print(f"Running Fava on ://{host}:{port}")
         server.safe_start()
     else:
         if profile:
