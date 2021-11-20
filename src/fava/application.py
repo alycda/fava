@@ -84,6 +84,7 @@ REPORTS = [
     "editor",
     "errors",
     "holdings",
+    "taxes",
     "import",
     "income_statement",
     "journal",
@@ -312,6 +313,10 @@ def statement() -> Any:
     document_path = g.ledger.statement_path(entry_hash, key)
     return send_file_inline(document_path)
 
+@app.route("/<bfile>/taxes/", methods=["GET"])
+def taxes() -> Any:
+    """The taxes report"""
+    return render_template("_layout.html", active_page="taxes")
 
 @app.route("/<bfile>/holdings/by_<aggregation_key>/")
 def holdings_by(aggregation_key: str) -> str:

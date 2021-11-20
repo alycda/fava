@@ -7,6 +7,7 @@
     'events':           (_('Events'),           'g E'),
     'help':             (_('Help'),             'g H'),
     'holdings':         (_('Holdings'),         'g h'),
+    'taxes':            (_('Taxes'),            'g T'),
     'import':           (_('Import'),           'g n'),
     'income_statement': (_('Income Statement'), 'g i'),
     'journal':          (_('Journal'),          'g j'),
@@ -17,6 +18,6 @@
 } %}
 {% set navigation_bar = [
     ['income_statement', 'balance_sheet', 'trial_balance', 'journal', 'query'],
-    ['holdings', 'commodities', 'documents', 'events', 'statistics'],
+    [ 'taxes', 'holdings', 'commodities', 'documents', 'events', 'statistics'],
     ['editor', 'import', 'options', 'help']
 ] %}
