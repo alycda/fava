@@ -4,9 +4,8 @@ tasks:
       touch ledger.beancount 
       chmod 664 ledger.beancount
     init: |
-      cd fava
       make
-      pre-commit install  # add a pre-commit hook to run linters
+      pre-commit install
       pip install --editable .
       gp sync-done bundle
     command: fava --debug ledger.beancount # -p 443 

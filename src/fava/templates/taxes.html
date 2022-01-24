@@ -1,1 +1,69 @@
+{% import '_query_table.html' as querytable %}
+
+{% set years = ['2020', '2021', '2022', '2023', '2024', '2025'] %}
+
+{% macro strip_currency(inventory) %}
+    {{ inventory.to_string(parens=False).split(" ")[0] }}
+{% endmacro %}
+
+{% macro combine_inventories(inventories) %}
+    {% for x in inventories if x %}
+        {% print(strip_currency(x[0].total)) %}
+    {% endfor %}
+{% endmacro %}
 <h2>Taxes</h2>
+
+<table is="sortable-table" class="queryresults">
+    <thead>
+        <tr>
+            <th></th>
+            
+        {% for year in years %}
+            <th>{{year}}</th>
+        {% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <!-- Social Security Wages, Medicare Wages, SDI Wages (Includes taxable benefits) -->
+            <td>Gross Income</td>
+
+        {% for year in years %}
+            {% set contents, result_types, result_rows = ledger.query_shell.execute_query('SELECT year, convert(sum(position), "USD") as total WHERE account ~ "Income:' + year + '" GROUP BY year') %}
+            <td>
+                
+                {{ strip_currency(result_rows[0].total) if result_rows else 'None'  }}
+            </td>
+        {% endfor %}
+        </tr>
+
+        <tr>
+            <!-- Gross - Taxes - Pre-Tax -->
+            <td>Federal Taxable Income</td>
+
+        {% for year in years %}
+            <!-- Gross -->
+            {% set contents, result_types, gross = ledger.query_shell.execute_query('SELECT year, convert(sum(position), "USD") as total WHERE account ~ "Income:' + year + '" GROUP BY year') %}
+            
+            <!-- Taxes -->
+            {% set contents2, result_types2, taxes = ledger.query_shell.execute_query('SELECT year, sum(position) as total WHERE account ~ "Expenses:Taxes:' + year + '" GROUP BY year') %}
+
+            <!-- PreTax -->
+            {% set contents2, result_types2, pretax = ledger.query_shell.execute_query('SELECT year, sum(position) as total WHERE account ~ "Expenses:PreTax:' + year + '" GROUP BY year') %}
+
+            <td>
+                {{combine_inventories([gross, taxes, pretax])}}
+            </td>
+        {% endfor %}
+        </tr>
+
+        <tr>
+            <!-- State Taxable Income (Federal Taxable + State Taxable) -->
+            <td>State Taxable Income</td>
+
+        {% for year in years %}
+            <td>?</td>
+        {% endfor %}
+        </tr>
+    </tbody>
+</table>

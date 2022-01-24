@@ -8,3 +8,4 @@ Adding a Route
 1. Modify `src/fava/templates/_globals.html:
     + Add entry to `all_pages` 
     + Add entry to `navigation_bar` 
+1. UI Router ???
