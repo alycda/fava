@@ -47,6 +47,7 @@ dependencies = [
     "ply>=3.4",
     "simplejson>=3.16.0,<4",
     "watchfiles>=0.20.0",
+    "DateTime>=4.3",
 ]
 
 [project.urls]
