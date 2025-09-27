@@ -33,8 +33,18 @@ export class FavaContainer {
       // Get the Fetcher object for port 5005
       const containerFetcher = await this.ctx.container.getTcpPort(5005);
 
+      // Create a new request with HTTP instead of HTTPS
+      const containerUrl = new URL(request.url);
+      containerUrl.protocol = 'http:';
+
+      const containerRequest = new Request(containerUrl.toString(), {
+        method: request.method,
+        headers: request.headers,
+        body: request.body,
+      });
+
       // Use the Fetcher to make the request to the container
-      const response = await containerFetcher.fetch(request);
+      const response = await containerFetcher.fetch(containerRequest);
 
       return response;
 
