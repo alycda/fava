@@ -1,0 +1,4 @@
+fava>=1.27
+beancount>=2.3.6
+werkzeug<3.0.0  # Compatibility fix
+gunicorn>=20.1.0
