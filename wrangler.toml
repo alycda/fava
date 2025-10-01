@@ -3,8 +3,9 @@ main = "worker.js"
 compatibility_date = "2025-09-27"
 
 [[containers]]
-name = "FAVA_CONTAINER"
-image = "ghcr.io/alycda/fava:latest"
+name = "fava_container"
+# image = "ghcr.io/alycda/fava:latest"
+image = "./Dockerfile"
 class_name = "FavaContainer"
 
 [[durable_objects.bindings]]
