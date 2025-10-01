@@ -40,7 +40,13 @@ RUN uv sync --frozen
 
 # Create a non-root user
 RUN useradd --create-home --shell /bin/bash fava
-RUN chown -R fava:fava /app
+
+# Create a default beancount file
+RUN mkdir -p /data && echo "option \"operating_currency\" \"USD\"" > /data/default.beancount
+
+# Set ownership
+RUN chown -R fava:fava /app /data
+
 USER fava
 
 # Expose the default port
@@ -55,7 +61,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:5005/ || exit 1
 
 # Default command (use uv to run from virtual environment)
-CMD ["uv", "run", "fava", "--host", "0.0.0.0", "--port", "5005"]
-
-# or run with:
-#   docker run -p 5005:5005 -v ./beans/:/data/ fava-app uv run fava --host 0.0.0.0 --port 5005 /data/2026.beancount    
+CMD ["uv", "run", "fava", "--host", "0.0.0.0", "--port", "5005", "/data/default.beancount"]    
