@@ -58,4 +58,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 CMD ["uv", "run", "fava", "--host", "0.0.0.0", "--port", "5005"]
 
 # or run with:
-#   docker run -p 5005:5005 -v ./beans/2026.beancount:/data/2026.beancount fava-app uv run fava --host 0.0.0.0 --port 5005 /data/2026.beancount    
+#   docker run -p 5005:5005 -v ./beans/:/data/ fava-app uv run fava --host 0.0.0.0 --port 5005 /data/2026.beancount    
