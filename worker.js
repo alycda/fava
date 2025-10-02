@@ -8,19 +8,19 @@ export class FavaContainer extends DurableObject {
     // Start the container if it's not already running
     void this.ctx.blockConcurrencyWhile(async () => {
       if (!this.container.running) {
-        // Load beancount file from R2 before starting container
-        await this.loadFromR2();
+        // Start both operations in parallel
+        const [_, __] = await Promise.all([
+          this.container.start({
+            env: {
+              FAVA_HOST: "0.0.0.0",
+              FAVA_PORT: "5005"
+            },
+            enableInternet: false
+          }),
+          this.loadFromR2()
+        ]);
 
-        await this.container.start({
-          env: {
-            FAVA_HOST: "0.0.0.0",
-            FAVA_PORT: "5005"
-          },
-          enableInternet: false
-        });
-
-        // Wait a moment for container to be ready, then upload file
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Upload file to container (includes wait for readiness)
         await this.uploadFileToContainer();
       }
     });
@@ -43,29 +43,57 @@ export class FavaContainer extends DurableObject {
     }
   }
 
+  async waitForContainer(maxAttempts = 30) {
+    // Wait for container to be ready by polling the health endpoint
+    for (let i = 0; i < maxAttempts; i++) {
+      try {
+        const response = await this.container.getTcpPort(5005).fetch('http://localhost:5005/');
+        if (response.status !== 500) {
+          console.log(`Container ready after ${i + 1} attempts`);
+          return true;
+        }
+      } catch (error) {
+        // Container not ready yet, keep waiting
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    console.error('Container failed to start after', maxAttempts, 'seconds');
+    return false;
+  }
+
   async uploadFileToContainer() {
     try {
       const content = await this.ctx.storage.get('beancount:current');
-      if (content) {
-        // Use Fava's existing PUT source API to write the file
-        const response = await this.container.getTcpPort(5005).fetch(
-          'http://localhost:5005/api/put_source',
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              file_path: '/data/2026.beancount',
-              source: content,
-              sha256sum: '' // Initial upload, no previous hash
-            })
-          }
-        );
+      if (!content) {
+        console.log('No content to upload');
+        return;
+      }
 
-        if (response.ok) {
-          console.log('Successfully uploaded file to container');
-        } else {
-          console.error('Failed to upload file:', await response.text());
+      // Wait for container to be ready
+      const ready = await this.waitForContainer();
+      if (!ready) {
+        console.error('Container not ready, skipping file upload');
+        return;
+      }
+
+      // Use Fava's existing PUT source API to write the file
+      const response = await this.container.getTcpPort(5005).fetch(
+        'http://localhost:5005/api/put_source',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            file_path: '/data/2026.beancount',
+            source: content,
+            sha256sum: '' // Initial upload, no previous hash
+          })
         }
+      );
+
+      if (response.ok) {
+        console.log('Successfully uploaded file to container');
+      } else {
+        console.error('Failed to upload file:', await response.text());
       }
     } catch (error) {
       console.error('Error uploading to container:', error.message);
@@ -121,7 +149,7 @@ export class FavaContainer extends DurableObject {
 }
 
 export default {
-  async fetch(request, env, ctx) {
+  async fetch(request, env) {
     try {
       // Get the durable object instance by name
       const id = env.FAVA_CONTAINER.idFromName("fava-session");
