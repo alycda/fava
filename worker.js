@@ -21,8 +21,40 @@ export class FavaContainer extends DurableObject {
           enableInternet: false
         });
       }
+
+      // Now wait for Flask to actually be ready
+        await this.waitForFlask();
+        this.containerReady = true;
     });
   }
+
+  async waitForFlask(maxAttempts = 30) {
+  console.log('Waiting for Flask to be ready...');
+  
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      // Try to connect to Flask
+      const response = await this.container.getTcpPort(5005).fetch(
+        'http://localhost:5005/',
+        { method: 'HEAD' } // HEAD is lightweight
+      );
+      
+      console.log(`Flask health check attempt ${i + 1}: ${response.status}`);
+      
+      // Accept any response (even 404) as proof Flask is listening
+      if (response.status < 500) {
+        console.log('Flask is ready!');
+        return;
+      }
+    } catch (error) {
+      console.log(`Flask not ready yet (attempt ${i + 1}): ${error.message}`);
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+  
+  throw new Error('Flask failed to start after 30 seconds');
+}
 
   async fetch(request, attempt = 1) {
     console.log(attempt);
