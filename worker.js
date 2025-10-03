@@ -1,6 +1,11 @@
 import { DurableObject } from 'cloudflare:workers';
 
 export class FavaContainer extends DurableObject {
+    // Default port the container listens on.
+  defaultPort = 5005;
+  // Set how long the container should stay active without requests
+  sleepAfter = '5m';
+
   constructor(ctx, env) {
     super(ctx, env);
     this.container = ctx.container;
@@ -27,20 +32,34 @@ export class FavaContainer extends DurableObject {
         request
       );
     } catch (error) {
-      return new Response(`Container error: ${error.message}`, {
-        status: 500,
-        headers: { 'Content-Type': 'text/plain' }
-      });
+    //   return new Response(`Container error: ${error.message}`, {
+    //     status: 500,
+    //     headers: { 'Content-Type': 'text/plain' }
+    //   });
+      return new Response(
+        'Starting up... please refresh in a moment',
+        { 
+          status: 503,
+          headers: { 'Retry-After': '5' }
+        }
+      );
     }
   }
 }
 
 export default {
   async fetch(request, env, ctx) {
+    // Get the durable object instance by name
+    const id = env.FAVA_CONTAINER.idFromName("fava-session");
+    const stub = env.FAVA_CONTAINER.get(id);
+
+    // Intercept index because its not working from within the container
+    const url = new URL(request.url);
+    if (url.pathname === '/edit') {
+      return stub.fetch(new Request('http://localhost:5005/beancount/income_statement/'));
+    }
+
     try {
-      // Get the durable object instance by name
-      const id = env.FAVA_CONTAINER.idFromName("fava-session");
-      const stub = env.FAVA_CONTAINER.get(id);
 
       // Forward the request to the durable object
       return await stub.fetch(request);
