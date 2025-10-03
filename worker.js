@@ -27,24 +27,57 @@ constructor(ctx, env) {
   this.initPromise = this.waitForFlask();
 }
 
+// async waitForFlask(maxAttempts = 60) {
+//   console.log('Waiting for Flask to be ready...');
+  
+//   for (let i = 0; i < maxAttempts; i++) {
+//     try {
+//       const response = await this.container.getTcpPort(5005).fetch(
+//         'http://localhost:5005/',
+//         { method: 'HEAD' }
+//       );
+      
+//       console.log(`Flask ready on attempt ${i + 1}`);
+//       this.ready = true;
+//       return;
+//     } catch (error) {
+//       console.log(`Attempt ${i + 1}/60: ${error.message}`);
+//     }
+    
+//     await new Promise(resolve => setTimeout(resolve, 2000)); // Check every 2s
+//   }
+  
+//   throw new Error('Flask failed to start');
+// }
+
 async waitForFlask(maxAttempts = 60) {
   console.log('Waiting for Flask to be ready...');
   
   for (let i = 0; i < maxAttempts; i++) {
     try {
-      const response = await this.container.getTcpPort(5005).fetch(
+      // Create timeout promise
+      const timeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('timeout')), 3000)
+      );
+      
+      // Race getTcpPort against timeout
+      const fetchPromise = this.container.getTcpPort(5005).fetch(
         'http://localhost:5005/',
         { method: 'HEAD' }
       );
       
+      const response = await Promise.race([fetchPromise, timeout]);
+      
       console.log(`Flask ready on attempt ${i + 1}`);
       this.ready = true;
       return;
+      
     } catch (error) {
       console.log(`Attempt ${i + 1}/60: ${error.message}`);
+      // Continue to next attempt
     }
     
-    await new Promise(resolve => setTimeout(resolve, 2000)); // Check every 2s
+    await new Promise(resolve => setTimeout(resolve, 2000));
   }
   
   throw new Error('Flask failed to start');
