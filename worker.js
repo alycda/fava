@@ -100,11 +100,11 @@ export default {
     const id = env.FAVA_CONTAINER.idFromName("fava-session");
     const stub = env.FAVA_CONTAINER.get(id);
 
-    // Route /index to income statement (workaround for container routing issue)
-    const url = new URL(request.url);
-    if (url.pathname === '/') {
-      return stub.fetch(new Request('http://localhost:5005/beancount/income_statement/'));
-    }
+    // // Route /index to income statement (workaround for container routing issue)
+    // const url = new URL(request.url);
+    // if (url.pathname === '/') {
+    //   return stub.fetch(new Request('http://localhost:5005/beancount/income_statement/'));
+    // }
 
     // Forward all other requests to the Durable Object
     try {
