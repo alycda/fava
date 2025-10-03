@@ -42,14 +42,28 @@ export class FavaContainer extends DurableObject {
     // // }
 
     try {
-      // Forward request to container on port 5005
-      return await this.container.getTcpPort(5005).fetch(
+    //   // Forward request to container on port 5005
+    //   return await this.container.getTcpPort(5005).fetch(
+    //     request.url.replace('https:', 'http:'),
+    //     request
+    //   );
+
+
+        // Race getTcpPort against a timeout
+        const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('getTcpPort timeout')), 5000)
+        );
+        
+        const fetchPromise = this.container.getTcpPort(5005).fetch(
         request.url.replace('https:', 'http:'),
         request
-      );
+        );
+        
+        return await Promise.race([fetchPromise, timeoutPromise]);
+
     } catch (error) {
     //     console.log("waiting...");
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        await new Promise(resolve => setTimeout(resolve, 3000));
     //     return this.fetch(request);
 
 
