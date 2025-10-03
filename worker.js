@@ -24,7 +24,23 @@ export class FavaContainer extends DurableObject {
     });
   }
 
-  async fetch(request) {
+  async fetch(request, attempt = 1) {
+    console.log(attempt);
+
+    // if (attempt >= 3) {
+    //     // Give up – return a clear error response instead of looping forever.
+    //     return new Response(
+    //       `Container error after 3 attempts: ${err.message}`,
+    //       { status: 502, headers: { 'Content-Type': 'text/plain' } }
+    //     );
+    //   }
+
+
+    // // while (!this.container.healthy) {
+    // //     console.log("waiting...");
+    // //     await new Promise(resolve => setTimeout(resolve, 2000));
+    // // }
+
     try {
       // Forward request to container on port 5005
       return await this.container.getTcpPort(5005).fetch(
@@ -32,18 +48,21 @@ export class FavaContainer extends DurableObject {
         request
       );
     } catch (error) {
-    //   return new Response(`Container error: ${error.message}`, {
-    //     status: 500,
-    //     headers: { 'Content-Type': 'text/plain' }
-    //   });
-      return new Response(
-        'Starting up... please refresh in a moment',
-        { 
-          status: 503,
-          headers: { 'Retry-After': '5' }
-        }
-      );
+    //     console.log("waiting...");
+        await new Promise(resolve => setTimeout(resolve, 5000));
+    //     return this.fetch(request);
+
+
+    if (attempt >= 3) {
+      return new Response(`Container error: ${error.message}`, {
+        status: 500,
+        headers: { 'Content-Type': 'text/plain' }
+      });
     }
+    }
+
+
+    return this.fetch(request, attempt + 1);
   }
 }
 
