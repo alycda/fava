@@ -30,27 +30,21 @@ export class FavaContainer extends DurableObject {
   /**
    * Wait for Flask application to be ready by polling with health checks.
    *
-   * TEST: Does AbortSignal work with getTcpPort().fetch()?
-   * - Test 1: Using AbortSignal.timeout() directly
-   * - Test 2: Using AbortController with manual abort
-   *
-   * Expected behavior (per maintainer):
-   * - fetch() hangs because Docker has opened the port, but Flask isn't listening yet
-   * - AbortSignal SHOULD interrupt the hanging fetch
+   * Uses AbortSignal.timeout() to prevent hanging when the container port is open
+   * but Flask isn't listening yet. Docker's HEALTHCHECK is defined but not exposed
+   * through the Cloudflare Workers container API, so we poll manually.
    */
   async waitForFlask(maxAttempts = 60) {
     console.log('Waiting for Flask to be ready...');
 
     for (let i = 0; i < maxAttempts; i++) {
       try {
-        // TEST 1: Try using AbortSignal.timeout() - should abort after 3 seconds
-        console.log(`Attempt ${i + 1}: Testing with AbortSignal.timeout(3000)`);
-
-        const response = await this.container.getTcpPort(5005).fetch(
+        // Use AbortSignal to timeout after 3 seconds if Flask isn't responding
+        await this.container.getTcpPort(5005).fetch(
           'http://localhost:5005/',
           {
             method: 'HEAD',
-            signal: AbortSignal.timeout(3000)  // Should abort after 3 seconds
+            signal: AbortSignal.timeout(3000)
           }
         );
 
@@ -58,20 +52,14 @@ export class FavaContainer extends DurableObject {
         this.ready = true;
         return;
       } catch (error) {
-        console.log(`Attempt ${i + 1}/60 failed: ${error.name} - ${error.message}`);
-
-        // Check if it's actually aborting or just timing out naturally
-        if (error.name === 'TimeoutError' || error.name === 'AbortError') {
-          console.log('✓ AbortSignal IS working - got expected abort/timeout error');
-        } else {
-          console.log(`? Got different error type: ${error.name}`);
-        }
+        console.log(`Attempt ${i + 1}/${maxAttempts}: ${error.message}`);
       }
 
+      // Wait 2 seconds before next health check attempt
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
 
-    throw new Error('Flask failed to start');
+    throw new Error('Flask failed to start within timeout period');
   }
 
   async fetch(request) {
