@@ -30,37 +30,42 @@ export class FavaContainer extends DurableObject {
   /**
    * Wait for Flask application to be ready by polling with health checks.
    *
-   * BUG: getTcpPort().fetch() hangs indefinitely instead of rejecting when the port isn't ready.
-   * Expected: fetch should fail/reject when Flask isn't listening yet
-   * Actual: fetch never resolves or rejects, hanging forever
+   * TEST: Does AbortSignal work with getTcpPort().fetch()?
+   * - Test 1: Using AbortSignal.timeout() directly
+   * - Test 2: Using AbortController with manual abort
    *
-   * Workaround: Race against a timeout promise to prevent infinite hangs
+   * Expected behavior (per maintainer):
+   * - fetch() hangs because Docker has opened the port, but Flask isn't listening yet
+   * - AbortSignal SHOULD interrupt the hanging fetch
    */
   async waitForFlask(maxAttempts = 60) {
     console.log('Waiting for Flask to be ready...');
 
     for (let i = 0; i < maxAttempts; i++) {
       try {
-        // Create a 3-second timeout to prevent getTcpPort().fetch() from hanging forever
-        const timeout = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('timeout')), 3000)
-        );
+        // TEST 1: Try using AbortSignal.timeout() - should abort after 3 seconds
+        console.log(`Attempt ${i + 1}: Testing with AbortSignal.timeout(3000)`);
 
-        // Attempt to connect to Flask - this will hang if port isn't ready yet
-        const fetchPromise = this.container.getTcpPort(5005).fetch(
+        const response = await this.container.getTcpPort(5005).fetch(
           'http://localhost:5005/',
-          { method: 'HEAD' }
+          {
+            method: 'HEAD',
+            signal: AbortSignal.timeout(3000)  // Should abort after 3 seconds
+          }
         );
-
-        // Race the fetch against timeout to avoid infinite hang
-        const response = await Promise.race([fetchPromise, timeout]);
 
         console.log(`Flask ready on attempt ${i + 1}`);
         this.ready = true;
         return;
       } catch (error) {
-        console.log(`Attempt ${i + 1}/60: ${error.message}`);
-        // Continue to next attempt after 2 seconds
+        console.log(`Attempt ${i + 1}/60 failed: ${error.name} - ${error.message}`);
+
+        // Check if it's actually aborting or just timing out naturally
+        if (error.name === 'TimeoutError' || error.name === 'AbortError') {
+          console.log('✓ AbortSignal IS working - got expected abort/timeout error');
+        } else {
+          console.log(`? Got different error type: ${error.name}`);
+        }
       }
 
       await new Promise(resolve => setTimeout(resolve, 2000));
