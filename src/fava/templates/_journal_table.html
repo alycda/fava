@@ -41,7 +41,7 @@
 {% macro journal_table_contents(entries, show_change_and_balance=False, ledger=None) %}
 {% set ledger = ledger or g.ledger %}
 {% autoescape false %}
-{% for entry in entries %}
+{% for entry in (entries|reverse if ledger.fava_options.reverse_entries else entries) %}
     {% if show_change_and_balance %}
         {% set index, entry, change, balance = entry %}
     {% else %}
